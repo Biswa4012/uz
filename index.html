@@ -155,15 +155,22 @@
     <!-- Firebase Imports -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, addDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
         setLogLevel('debug');
 
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        // IMPORTANT: Replace the placeholder below with your actual Firebase config object.
+        // You can get this from your Firebase project settings in the console.
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_AUTH_DOMAIN",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_STORAGE_BUCKET",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
         
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
@@ -181,11 +188,7 @@
                 console.log("User signed in with UID:", userId);
             } else {
                 console.log("No user signed in. Signing in anonymously...");
-                if (initialAuthToken) {
-                    await signInWithCustomToken(auth, initialAuthToken).catch((error) => console.error("Firebase custom auth failed:", error));
-                } else {
-                    await signInAnonymously(auth).catch((error) => console.error("Firebase anonymous auth failed:", error));
-                }
+                await signInAnonymously(auth).catch((error) => console.error("Firebase anonymous auth failed:", error));
             }
             isAuthReady = true;
         });
@@ -307,7 +310,7 @@
                 return;
             }
 
-            const ordersCollectionRef = collection(db, `artifacts/${appId}/public/data/orders`);
+            const ordersCollectionRef = collection(db, `artifacts/${firebaseConfig.projectId}/public/data/orders`);
             
             try {
                 const docRef = await addDoc(ordersCollectionRef, {
