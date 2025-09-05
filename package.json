@@ -1,0 +1,12 @@
+{
+  "name": "urban-zaika-app",
+  "version": "1.0.0",
+  "description": "A static website for Urban Zaika cloud kitchen.",
+  "scripts": {
+    "start": "npx serve -s"
+  },
+  "dependencies": {
+    "serve": "^14.2.1"
+  },
+  "license": "MIT"
+}
