@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Urban Zaika</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Poppins:wght@400;600&display=swap');
+
+        :root {
+            --primary-garnet: #8c001a;
+            --secondary-charcoal: #2c3e50;
+            --accent-turquoise: #1abc9c;
+            --accent-pink: #ff4081;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--secondary-charcoal);
+            color: #ecf0f1;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* Subtle moving background glow for the hero section */
+        .hero-bg {
+            background: radial-gradient(circle, var(--primary-garnet) 0%, transparent 70%);
+            background-size: 300% 300%;
+            animation: moveGlow 15s ease-in-out infinite alternate;
+        }
+
+        @keyframes moveGlow {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        /* Subtle glow on hover for buttons and cards */
+        .glow-on-hover:hover {
+            box-shadow: 0 0 10px 5px rgba(255, 64, 129, 0.5);
+            transition: box-shadow 0.3s ease-in-out;
+        }
+
+        .glow-on-hover-card:hover {
+            transform: translateY(-5px);
+            transition: all 0.3s ease-in-out;
+        }
+
+        .glow-on-click {
+            animation: clickGlow 0.5s ease-in-out;
+        }
+
+        @keyframes clickGlow {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); box-shadow: 0 0 15px 5px rgba(255, 64, 129, 0.7); }
+            100% { transform: scale(1); }
+        }
+
+        /* Continuous background glowing box animation with an added pulsating border glow */
+        .animated-card-glow {
+            position: relative;
+            z-index: 1;
+            overflow: hidden;
+            box-shadow: 0 0 5px var(--accent-pink); /* Default glow */
+            animation: pulsating-glow 3s infinite ease-in-out; /* Pulsating effect */
+        }
+
+        .animated-card-glow::before {
+            content: '';
+            position: absolute;
+            top: -20%;
+            left: -20%;
+            width: 140%;
+            height: 140%;
+            background: radial-gradient(circle, var(--accent-pink) 0%, rgba(255, 64, 129, 0) 50%);
+            z-index: -1;
+            filter: blur(20px);
+            animation: moving-radial-glow 8s infinite alternate;
+        }
+        
+        @keyframes moving-radial-glow {
+            0% { transform: translate(0, 0) scale(1); }
+            25% { transform: translate(20%, -10%) scale(1.1); }
+            50% { transform: translate(-10%, 20%) scale(1.2); }
+            75% { transform: translate(15%, 15%) scale(1.1); }
+            100% { transform: translate(0, 0) scale(1); }
+        }
+        
+        @keyframes pulsating-glow {
+            0% { box-shadow: 0 0 5px var(--accent-pink); }
+            50% { box-shadow: 0 0 10px var(--accent-pink), 0 0 15px rgba(255, 64, 129, 0.5); }
+            100% { box-shadow: 0 0 5px var(--accent-pink); }
+        }
+
+        /* Cart pulse animation */
+        .cart-pulse {
+            animation: cartPulse 1s infinite;
+        }
+
+        @keyframes cartPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .animated-gradient {
+            background: linear-gradient(45deg, var(--primary-garnet), var(--accent-pink), var(--primary-garnet));
+            background-size: 200% 200%;
+            animation: gradient-animation 10s ease-in-out infinite;
+        }
+
+        @keyframes gradient-animation {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* The core animation rule for text */
+        @keyframes running-text-glow {
+            0% { text-shadow: 0 0 10px rgba(255, 64, 129, 0.5); }
+            50% { text-shadow: 0 0 20px rgba(255, 64, 129, 0.8), 0 0 30px rgba(255, 64, 129, 0.6); }
+            100% { text-shadow: 0 0 10px rgba(255, 64, 129, 0.5); }
+        }
+        
+        /* The class applied to each letter */
+        .running-glow-letter {
+            display: inline-block;
+            animation: running-text-glow 2s infinite ease-in-out alternate;
+        }
+    </style>
+</head>
+<body class="relative">
+    <!-- Firebase Imports -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
+        setLogLevel('debug');
+
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        
+        let userId = null;
+        let isAuthReady = false;
+
+        const cart = {};
+
+        // Sign in anonymously on load
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                userId = user.uid;
+                console.log("User signed in with UID:", userId);
+            } else {
+                console.log("No user signed in. Signing in anonymously...");
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken).catch((error) => console.error("Firebase custom auth failed:", error));
+                } else {
+                    await signInAnonymously(auth).catch((error) => console.error("Firebase anonymous auth failed:", error));
+                }
+            }
+            isAuthReady = true;
+        });
+
+        // Event listener for adding to cart
+        window.addToCart = (itemId, itemName, itemPrice) => {
+            if (cart[itemId]) {
+                cart[itemId].quantity += 1;
+            } else {
+                cart[itemId] = {
+                    name: itemName,
+                    price: itemPrice,
+                    quantity: 1,
+                };
+            }
+            updateCartUI();
+            localStorage.setItem('cart', JSON.stringify(cart)); // Simple cart state
+        };
+        
+        window.removeFromCart = (itemId) => {
+            if (cart[itemId] && cart[itemId].quantity > 1) {
+                cart[itemId].quantity -= 1;
+            } else {
+                delete cart[itemId];
+            }
+            updateCartUI();
+            localStorage.setItem('cart', JSON.stringify(cart));
+        };
+
+        window.updateCartUI = () => {
+            const cartItemsContainer = document.getElementById('cart-items');
+            const cartTotal = document.getElementById('cart-total');
+            const cartItemCount = document.getElementById('cart-item-count');
+            let total = 0;
+
+            cartItemsContainer.innerHTML = '';
+            let itemCount = 0;
+
+            for (const itemId in cart) {
+                const item = cart[itemId];
+                const itemTotal = item.price * item.quantity;
+                total += itemTotal;
+                itemCount += item.quantity;
+
+                const cartItemDiv = document.createElement('div');
+                cartItemDiv.className = 'flex justify-between items-center py-2 border-b border-gray-700';
+                cartItemDiv.innerHTML = `
+                    <div class="flex-1">
+                        <h4 class="font-semibold text-lg">${item.name}</h4>
+                        <p class="text-sm text-gray-400">₹${item.price} x ${item.quantity}</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <p class="font-bold">₹${itemTotal}</p>
+                        <button onclick="removeFromCart('${itemId}')" class="text-gray-400 hover:text-red-500 transition-colors duration-200">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M9 2a1 1 0 00-1 1v1H5a1 1 0 000 2h1v10a2 2 0 002 2h6a2 2 0 002-2V6h1a1 1 0 100-2h-3V3a1 1 0 00-1-1H9zm1 2h2v1H9V4zm5 3v9H7V7h7z" clip-rule="evenodd" />
+                            </svg>
+                        </button>
+                    </div>
+                `;
+                cartItemsContainer.appendChild(cartItemDiv);
+            }
+
+            cartTotal.textContent = `₹${total}`;
+            cartItemCount.textContent = itemCount;
+
+            // Animate cart icon on update
+            const cartIcon = document.getElementById('cart-icon');
+            cartIcon.classList.add('cart-pulse');
+            setTimeout(() => {
+                cartIcon.classList.remove('cart-pulse');
+            }, 1000);
+        };
+        
+        window.openModal = (modalId) => {
+            document.getElementById(modalId).classList.remove('hidden');
+        };
+
+        window.closeModal = (modalId) => {
+            document.getElementById(modalId).classList.add('hidden');
+        };
+
+        window.submitOrder = async (event) => {
+            event.preventDefault();
+            const form = event.target;
+            const name = form.name.value;
+            const phone = form.phone.value;
+            const address = form.address.value;
+            const specialInstructions = form.specialInstructions.value;
+            const paymentMethod = form.paymentMethod.value;
+            const orderItems = Object.values(cart).map(item => ({
+                name: item.name,
+                price: item.price,
+                quantity: item.quantity
+            }));
+            const total = Object.values(cart).reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            
+            if (Object.keys(cart).length === 0) {
+                // Use a modal-like message box instead of alert
+                document.getElementById('message-box-text').textContent = 'Your cart is empty!';
+                openModal('message-box-modal');
+                return;
+            }
+
+            if (!isAuthReady || !userId) {
+                document.getElementById('message-box-text').textContent = 'Authentication not ready. Please wait a moment and try again.';
+                openModal('message-box-modal');
+                return;
+            }
+
+            const ordersCollectionRef = collection(db, `artifacts/${appId}/public/data/orders`);
+            
+            try {
+                const docRef = await addDoc(ordersCollectionRef, {
+                    customer: { name, phone, address, specialInstructions, paymentMethod },
+                    orderItems: JSON.parse(JSON.stringify(orderItems)), // Deep copy to prevent issues
+                    total,
+                    status: 'Pending',
+                    timestamp: new Date()
+                });
+                console.log("Order submitted with ID: ", docRef.id);
+                // Clear the cart
+                localStorage.removeItem('cart');
+                updateCartUI();
+                document.getElementById('message-box-text').textContent = 'Order submitted successfully! Your order number is ' + docRef.id;
+                openModal('message-box-modal');
+            } catch (e) {
+                console.error("Error adding document: ", e);
+                document.getElementById('message-box-text').textContent = 'Failed to submit order. Please try again.';
+                openModal('message-box-modal');
+            }
+        };
+
+        window.loadCartFromStorage = () => {
+            const storedCart = localStorage.getItem('cart');
+            if (storedCart) {
+                try {
+                    Object.assign(cart, JSON.parse(storedCart));
+                    updateCartUI();
+                } catch (e) {
+                    console.error("Failed to parse cart from storage:", e);
+                }
+            }
+        };
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            loadCartFromStorage();
+        });
+
+    </script>
+
+    <!-- Navigation Header -->
+    <header class="flex justify-between items-center p-4 md:p-6 sticky top-0 bg-opacity-90 backdrop-blur-sm z-50 rounded-b-lg shadow-xl">
+        <h1 class="text-3xl md:text-4xl font-extrabold font-['Playfair_Display'] text-white">
+            <span class="running-glow-letter" style="animation-delay: 0s;">U</span>
+            <span class="running-glow-letter" style="animation-delay: 0.1s;">r</span>
+            <span class="running-glow-letter" style="animation-delay: 0.2s;">b</span>
+            <span class="running-glow-letter" style="animation-delay: 0.3s;">a</span>
+            <span class="running-glow-letter" style="animation-delay: 0.4s;">n</span>
+            <span class="running-glow-letter">&nbsp;</span>
+            <span class="running-glow-letter" style="animation-delay: 0.6s;">Z</span>
+            <span class="running-glow-letter" style="animation-delay: 0.7s;">a</span>
+            <span class="running-glow-letter" style="animation-delay: 0.8s;">i</span>
+            <span class="running-glow-letter" style="animation-delay: 0.9s;">k</span>
+            <span class="running-glow-letter" style="animation-delay: 1.0s;">a</span>
+        </h1>
+        <div class="flex items-center space-x-4">
+            <button onclick="openModal('cart-modal')" class="flex items-center space-x-2 text-white p-3 rounded-full animated-gradient glow-on-hover">
+                <svg id="cart-icon" xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 md:h-8 md:w-8" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M3 1a1 1 0 000 2h1a1 1 0 001-1V4h7a1 1 0 00.999-.876l.732-4.145A1 1 0 0013 1H5a1 1 0 00-1 1v2a2 2 0 002 2h7a2 2 0 012 2v2a2 2 0 01-2 2H6V9a1 1 0 00-1-1H3V7a1 1 0 00-1-1V5a1 1 0 00-1-1h-.25A1.75 1.75 0 000 5.75V11a.75.75 0 001.5 0V5.75A.25.25 0 012 5.5h1V9a.75.75 0 001.5 0V7H6a.75.75 0 000-1h7a.75.75 0 00.75-.75V2.75A.75.75 0 0013 2H5V1a1 1 0 00-1-1H3a1 1 0 00-1 1zM7 16a2 2 0 11-4 0 2 2 0 014 0zM15 16a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+                <span id="cart-item-count" class="text-white font-bold text-lg">0</span>
+                <span class="hidden md:inline">View Cart</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main>
+        <!-- Hero Section -->
+        <section class="relative h-[80vh] flex items-center justify-center p-6 text-center overflow-hidden rounded-b-3xl shadow-2xl">
+            <div class="absolute inset-0 z-0 hero-bg"></div>
+            <div class="absolute inset-0 z-0" style="background-image: url('https://placehold.co/1200x800/2c3e50/ecf0f1?text=Deliciously+Crafted'); background-size: cover; background-position: center; opacity: 0.3;"></div>
+            <div class="relative z-10 p-8 rounded-lg">
+                <h2 class="text-4xl md:text-6xl lg:text-7xl font-['Playfair_Display'] font-extrabold text-white leading-tight mb-4 animate-fade-in-up">
+                    Deliciously Crafted, Just for You
+                </h2>
+                <p class="text-lg md:text-xl font-light text-gray-200 mb-8 animate-fade-in">
+                    Experience the vibrant flavors of Urban Zaika, delivered right to your doorstep.
+                </p>
+                <button onclick="document.getElementById('menu-section').scrollIntoView({ behavior: 'smooth' })" class="bg-gradient-to-r from-pink-400 to-red-500 text-gray-900 font-bold py-3 px-8 rounded-full shadow-lg transition-transform duration-300 hover:scale-105 glow-on-hover">
+                    Explore Menu
+                </button>
+            </div>
+        </section>
+
+        <!-- Menu Section -->
+        <section id="menu-section" class="py-16 md:py-24 container">
+            <h3 class="text-4xl md:text-5xl font-['Playfair_Display'] font-bold text-center mb-12">Our Menu</h3>
+
+            <!-- SNACKS & ROLLS -->
+            <div class="mb-16">
+                <h4 class="text-3xl font-['Playfair_Display'] font-bold mb-8 border-b-2 border-primary-garnet pb-2">SNACKS & ROLLS</h4>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <!-- Veg Patties -->
+                    <div class="p-6 rounded-lg shadow-xl hover:shadow-2xl transition-all duration-300 glow-on-hover-card animated-card-glow">
+                        <img src="https://placehold.co/400x300/e74c3c/2c3e50?text=Veg+Patties" alt="Veg Patties" class="w-full h-48 object-cover rounded-md mb-4 shadow-inner">
+                        <h5 class="text-2xl font-bold font-['Poppins'] mb-2">Veg Patties</h5>
+                        <p class="text-gray-400 mb-4">Crispy, flaky pastry filled with spiced vegetables.</p>
+                        <div class="flex justify-between items-center">
+                            <span class="text-2xl font-bold text-accent-pink">₹35</span>
+                            <button onclick="addToCart('item-1', 'Veg Patties', 35); this.classList.add('glow-on-click'); setTimeout(() => this.classList.remove('glow-on-click'), 500);" class="bg-accent-turquoise text-white font-semibold py-2 px-6 rounded-full shadow-lg transition-transform duration-300 hover:scale-105 glow-on-hover">
+                                Add to Cart
+                            </button>
+                        </div>
+                    </div>
+                    <!-- Chicken Roll -->
+                    <div class="p-6 rounded-lg shadow-xl hover:shadow-2xl transition-all duration-300 glow-on-hover-card animated-card-glow">
+                        <img src="https://placehold.co/400x300/e74c3c/2c3e50?text=Chicken+Roll" alt="Chicken Roll" class="w-full h-48 object-cover rounded-md mb-4 shadow-inner">
+                        <h5 class="text-2xl font-bold font-['Poppins'] mb-2">Chicken Roll</h5>
+                        <p class="text-gray-400 mb-4">Spicy chicken wrapped in a soft, flaky bread.</p>
+                        <div class="flex justify-between items-center">
+                            <span class="text-2xl font-bold text-accent-pink">₹80</span>
+                            <button onclick="addToCart('item-2', 'Chicken Roll', 80); this.classList.add('glow-on-click'); setTimeout(() => this.classList.remove('glow-on-click'), 500);" class="bg-accent-turquoise text-white font-semibold py-2 px-6 rounded-full shadow-lg transition-transform duration-300 hover:scale-105 glow-on-hover">
+                                Add to Cart
+                            </button>
+                        </div>
+                    </div>
+                    <!-- Veg Roll -->
+                    <div class="p-6 rounded-lg shadow-xl hover:shadow-2xl transition-all duration-300 glow-on-hover-card animated-card-glow">
+                        <img src="https://placehold.co/400x300/e74c3c/2c3e50?text=Veg+Roll" alt="Veg Roll" class="w-full h-48 object-cover rounded-md mb-4 shadow-inner">
+                        <h5 class="text-2xl font-bold font-['Poppins'] mb-2">Veg Roll</h5>
+                        <p class="text-gray-400 mb-4">A flavorful mix of veggies rolled in a warm paratha.</p>
+                        <div class="flex justify-between items-center">
+                            <span class="text-2xl font-bold text-accent-pink">₹70</span>
+                            <button onclick="addToCart('item-3', 'Veg Roll', 70); this.classList.add('glow-on-click'); setTimeout(() => this.classList.remove('glow-on-click'), 500);" class="bg-accent-turquoise text-white font-semibold py-2 px-6 rounded-full shadow-lg transition-transform duration-300 hover:scale-105 glow-on-hover">
+                                Add to Cart
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PIZZA & BIRIYANI -->
+            <div class="mb-16">
+                <h4 class="text-3xl font-['Playfair_Display'] font-bold mb-8 border-b-2 border-primary-garnet pb-2">PIZZA & BIRIYANI</h4>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <!-- Veg Pizza -->
+                    <div class="p-6 rounded-lg shadow-xl hover:shadow-2xl transition-all duration-300 glow-on-hover-card animated-card-glow">
+                        <img src="https://placehold.co/400x300/e74c3c/2c3e50?text=Veg+Pizza" alt="Veg Pizza" class="w-full h-48 object-cover rounded-md mb-4 shadow-inner">
+                        <h5 class="text-2xl font-bold font-['Poppins'] mb-2">Veg Pizza</h5>
+                        <p class="text-gray-400 mb-4">Loaded with onion, sweet corn, and capsicum.</p>
+                        <div class="flex justify-between items-center">
+                            <span class="text-2xl font-bold text-accent-pink">₹80</span>
+                            <button onclick="addToCart('item-4', 'Veg Pizza', 80); this.classList.add('glow-on-click'); setTimeout(() => this.classList.remove('glow-on-click'), 500);" class="bg-accent-turquoise text-white font-semibold py-2 px-6 rounded-full shadow-lg transition-transform duration-300 hover:scale-105 glow-on-hover">
+                                Add to Cart
+                            </button>
+                        </div>
+                    </div>
+                    <!-- Chicken Biriyani -->
+                    <div class="p-6 rounded-lg shadow-xl hover:shadow-2xl transition-all duration-300 glow-on-hover-card animated-card-glow">
+                        <img src="https://placehold.co/400x300/e74c3c/2c3e50?text=Chicken+Biriyani" alt="Chicken Biriyani" class="w-full h-48 object-cover rounded-md mb-4 shadow-inner">
+                        <h5 class="text-2xl font-bold font-['Poppins'] mb-2">Chicken Biriyani</h5>
+                        <p class="text-gray-400 mb-4">Aromatic Basmati rice with succulent chicken pieces.</p>
+                        <div class="flex justify-between items-center">
+                            <span class="text-2xl font-bold text-accent-pink">₹120</span>
+                            <button onclick="addToCart('item-5', 'Chicken Biriyani', 120); this.classList.add('glow-on-click'); setTimeout(() => this.classList.remove('glow-on-click'), 500);" class="bg-accent-turquoise text-white font-semibold py-2 px-6 rounded-full shadow-lg transition-transform duration-300 hover:scale-105 glow-on-hover">
+                                Add to Cart
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MAIN COURSE CURRIES -->
+            <div class="mb-16">
+                <h4 class="text-3xl font-['Playfair_Display'] font-bold mb-8 border-b-2 border-primary-garnet pb-2">MAIN COURSE CURRIES</h4>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <!-- Kadai Paneer -->
+                    <div class="p-6 rounded-lg shadow-xl hover:shadow-2xl transition-all duration-300 glow-on-hover-card animated-card-glow">
+                        <img src="https://placehold.co/400x300/e74c3c/2c3e50?text=Kadai+Paneer" alt="Kadai Paneer" class="w-full h-48 object-cover rounded-md mb-4 shadow-inner">
+                        <h5 class="text-2xl font-bold font-['Poppins'] mb-2">Kadai Paneer</h5>
+                        <p class="text-gray-400 mb-4">Rich and spicy paneer curry with bell peppers.</p>
+                        <div class="flex justify-between items-center">
+                            <span class="text-2xl font-bold text-accent-pink">₹120</span>
+                            <button onclick="addToCart('item-6', 'Kadai Paneer', 120); this.classList.add('glow-on-click'); setTimeout(() => this.classList.remove('glow-on-click'), 500);" class="bg-accent-turquoise text-white font-semibold py-2 px-6 rounded-full shadow-lg transition-transform duration-300 hover:scale-105 glow-on-hover">
+                                Add to Cart
+                            </button>
+                        </div>
+                    </div>
+                    <!-- Chole Curry -->
+                    <div class="p-6 rounded-lg shadow-xl hover:shadow-2xl transition-all duration-300 glow-on-hover-card animated-card-glow">
+                        <img src="https://placehold.co/400x300/e74c3c/2c3e50?text=Chole+Curry" alt="Chole Curry" class="w-full h-48 object-cover rounded-md mb-4 shadow-inner">
+                        <h5 class="text-2xl font-bold font-['Poppins'] mb-2">Chole Curry</h5>
+                        <p class="text-gray-400 mb-4">Hearty chickpea curry, perfect with rice or bread.</p>
+                        <div class="flex justify-between items-center">
+                            <span class="text-2xl font-bold text-accent-pink">₹60</span>
+                            <button onclick="addToCart('item-7', 'Chole Curry', 60); this.classList.add('glow-on-click'); setTimeout(() => this.classList.remove('glow-on-click'), 500);" class="bg-accent-turquoise text-white font-semibold py-2 px-6 rounded-full shadow-lg transition-transform duration-300 hover:scale-105 glow-on-hover">
+                                Add to Cart
+                            </button>
+                        </div>
+                    </div>
+                    <!-- Chicken Curry -->
+                    <div class="p-6 rounded-lg shadow-xl hover:shadow-2xl transition-all duration-300 glow-on-hover-card animated-card-glow">
+                        <img src="https://placehold.co/400x300/e74c3c/2c3e50?text=Chicken+Curry" alt="Chicken Curry" class="w-full h-48 object-cover rounded-md mb-4 shadow-inner">
+                        <h5 class="text-2xl font-bold font-['Poppins'] mb-2">Chicken Curry</h5>
+                        <p class="text-gray-400 mb-4">Homestyle chicken curry, a true classic.</p>
+                        <div class="flex justify-between items-center">
+                            <span class="text-2xl font-bold text-accent-pink">₹130</span>
+                            <button onclick="addToCart('item-8', 'Chicken Curry', 130); this.classList.add('glow-on-click'); setTimeout(() => this.classList.remove('glow-on-click'), 500);" class="bg-accent-turquoise text-white font-semibold py-2 px-6 rounded-full shadow-lg transition-transform duration-300 hover:scale-105 glow-on-hover">
+                                Add to Cart
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+    
+    <!-- Cart Modal -->
+    <div id="cart-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
+        <div class="bg-gray-800 p-8 rounded-lg shadow-2xl max-w-lg w-full relative border border-gray-700">
+            <button onclick="closeModal('cart-modal')" class="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors duration-200">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+            <h3 class="text-3xl font-bold mb-6 font-['Playfair_Display']">Your Cart</h3>
+            <div id="cart-items" class="max-h-64 overflow-y-auto mb-6">
+                <!-- Cart items will be dynamically added here -->
+            </div>
+            <div class="flex justify-between items-center text-2xl font-bold pt-4 border-t border-gray-700">
+                <span>Total:</span>
+                <span id="cart-total">₹0</span>
+            </div>
+            
+            <!-- Order Form -->
+            <form id="order-form" onsubmit="submitOrder(event)" class="mt-8 space-y-4">
+                <div>
+                    <label for="name" class="block text-sm font-medium mb-1">Name</label>
+                    <input type="text" id="name" name="name" required class="w-full p-3 rounded-md bg-gray-700 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-accent-turquoise">
+                </div>
+                <div>
+                    <label for="phone" class="block text-sm font-medium mb-1">Phone Number</label>
+                    <input type="tel" id="phone" name="phone" required class="w-full p-3 rounded-md bg-gray-700 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-accent-turquoise">
+                </div>
+                <div>
+                    <label for="address" class="block text-sm font-medium mb-1">Delivery Address</label>
+                    <textarea id="address" name="address" rows="3" required class="w-full p-3 rounded-md bg-gray-700 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-accent-turquoise"></textarea>
+                </div>
+                <div>
+                    <label for="specialInstructions" class="block text-sm font-medium mb-1">Special Instructions (Optional)</label>
+                    <textarea id="specialInstructions" name="specialInstructions" rows="2" class="w-full p-3 rounded-md bg-gray-700 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-accent-turquoise"></textarea>
+                </div>
+                <div>
+                    <label for="paymentMethod" class="block text-sm font-medium mb-1">Payment Method</label>
+                    <select id="paymentMethod" name="paymentMethod" class="w-full p-3 rounded-md bg-gray-700 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-accent-turquoise">
+                        <option value="Cash on Delivery">Cash on Delivery</option>
+                        <option value="Online">Online Payment (coming soon)</option>
+                    </select>
+                </div>
+                <button type="submit" class="w-full bg-gradient-to-r from-pink-400 to-red-500 text-white font-bold py-3 rounded-full shadow-lg transition-transform duration-300 hover:scale-105 glow-on-hover">
+                    Place Order
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Message Box Modal -->
+    <div id="message-box-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
+        <div class="bg-gray-800 p-8 rounded-lg shadow-2xl max-w-sm w-full relative text-center border border-gray-700">
+            <p id="message-box-text" class="text-xl font-semibold mb-4"></p>
+            <button onclick="closeModal('message-box-modal')" class="bg-gray-700 text-white py-2 px-6 rounded-full transition-colors duration-200 hover:bg-gray-600">OK</button>
+        </div>
+    </div>
+</body>
+</html>
