@@ -132,6 +132,23 @@
             display: inline-block;
             animation: running-text-glow 2s infinite ease-in-out alternate;
         }
+
+        .cart-icon-container {
+            position: relative;
+        }
+        
+        .cart-item-count {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background-color: var(--accent-pink);
+            color: white;
+            border-radius: 9999px;
+            padding: 2px 8px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            line-height: 1;
+        }
     </style>
 </head>
 <body class="relative">
@@ -236,7 +253,7 @@
             cartItemCount.textContent = itemCount;
 
             // Animate cart icon on update
-            const cartIcon = document.getElementById('cart-icon');
+            const cartIcon = document.getElementById('cart-icon-container');
             cartIcon.classList.add('cart-pulse');
             setTimeout(() => {
                 cartIcon.classList.remove('cart-pulse');
@@ -249,6 +266,17 @@
 
         window.closeModal = (modalId) => {
             document.getElementById(modalId).classList.add('hidden');
+        };
+
+        window.showCheckoutForm = () => {
+            document.getElementById('cart-view').classList.add('hidden');
+            document.getElementById('checkout-form-view').classList.remove('hidden');
+        };
+
+        window.showCartView = () => {
+            document.getElementById('cart-view').classList.remove('hidden');
+            document.getElementById('checkout-form-view').classList.add('hidden');
+            updateCartUI();
         };
 
         window.submitOrder = async (event) => {
@@ -292,6 +320,7 @@
                 console.log("Order submitted with ID: ", docRef.id);
                 // Clear the cart
                 localStorage.removeItem('cart');
+                Object.keys(cart).forEach(key => delete cart[key]); // Clear in-memory cart
                 updateCartUI();
                 document.getElementById('message-box-text').textContent = 'Order submitted successfully! Your order number is ' + docRef.id;
                 openModal('message-box-modal');
@@ -336,11 +365,13 @@
             <span class="running-glow-letter" style="animation-delay: 1.0s;">a</span>
         </h1>
         <div class="flex items-center space-x-4">
-            <button onclick="openModal('cart-modal')" class="flex items-center space-x-2 text-white p-3 rounded-full animated-gradient glow-on-hover">
-                <svg id="cart-icon" xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 md:h-8 md:w-8" viewBox="0 0 20 20" fill="currentColor">
-                    <path d="M3 1a1 1 0 000 2h1a1 1 0 001-1V4h7a1 1 0 00.999-.876l.732-4.145A1 1 0 0013 1H5a1 1 0 00-1 1v2a2 2 0 002 2h7a2 2 0 012 2v2a2 2 0 01-2 2H6V9a1 1 0 00-1-1H3V7a1 1 0 00-1-1V5a1 1 0 00-1-1h-.25A1.75 1.75 0 000 5.75V11a.75.75 0 001.5 0V5.75A.25.25 0 012 5.5h1V9a.75.75 0 001.5 0V7H6a.75.75 0 000-1h7a.75.75 0 00.75-.75V2.75A.75.75 0 0013 2H5V1a1 1 0 00-1-1H3a1 1 0 00-1 1zM7 16a2 2 0 11-4 0 2 2 0 014 0zM15 16a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
-                <span id="cart-item-count" class="text-white font-bold text-lg">0</span>
+            <button onclick="openModal('cart-modal'); showCartView();" class="flex items-center space-x-2 text-white p-3 rounded-full animated-gradient glow-on-hover">
+                <div id="cart-icon-container" class="relative">
+                    <svg id="cart-icon" xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 md:h-8 md:w-8" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M3 1a1 1 0 000 2h1a1 1 0 001-1V4h7a1 1 0 00.999-.876l.732-4.145A1 1 0 0013 1H5a1 1 0 00-1 1v2a2 2 0 002 2h7a2 2 0 012 2v2a2 2 0 01-2 2H6V9a1 1 0 00-1-1H3V7a1 1 0 00-1-1V5a1 1 0 00-1-1h-.25A1.75 1.75 0 000 5.75V11a.75.75 0 001.5 0V5.75A.25.25 0 012 5.5h1V9a.75.75 0 001.5 0V7H6a.75.75 0 000-1h7a.75.75 0 00.75-.75V2.75A.75.75 0 0013 2H5V1a1 1 0 00-1-1H3a1 1 0 00-1 1zM7 16a2 2 0 11-4 0 2 2 0 014 0zM15 16a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                    <span id="cart-item-count" class="cart-item-count">0</span>
+                </div>
                 <span class="hidden md:inline">View Cart</span>
             </button>
         </div>
@@ -490,50 +521,64 @@
     
     <!-- Cart Modal -->
     <div id="cart-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
-        <div class="bg-gray-800 p-8 rounded-lg shadow-2xl max-w-lg w-full relative border border-gray-700">
+        <div class="bg-gray-800 p-8 rounded-lg shadow-2xl max-w-lg w-full relative border border-gray-700 max-h-screen overflow-y-auto">
             <button onclick="closeModal('cart-modal')" class="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors duration-200">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
             </button>
             <h3 class="text-3xl font-bold mb-6 font-['Playfair_Display']">Your Cart</h3>
-            <div id="cart-items" class="max-h-64 overflow-y-auto mb-6">
-                <!-- Cart items will be dynamically added here -->
-            </div>
-            <div class="flex justify-between items-center text-2xl font-bold pt-4 border-t border-gray-700">
-                <span>Total:</span>
-                <span id="cart-total">₹0</span>
-            </div>
-            
-            <!-- Order Form -->
-            <form id="order-form" onsubmit="submitOrder(event)" class="mt-8 space-y-4">
-                <div>
-                    <label for="name" class="block text-sm font-medium mb-1">Name</label>
-                    <input type="text" id="name" name="name" required class="w-full p-3 rounded-md bg-gray-700 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-accent-turquoise">
+
+            <!-- Cart View -->
+            <div id="cart-view">
+                <div id="cart-items" class="max-h-64 overflow-y-auto mb-6">
+                    <!-- Cart items will be dynamically added here -->
                 </div>
-                <div>
-                    <label for="phone" class="block text-sm font-medium mb-1">Phone Number</label>
-                    <input type="tel" id="phone" name="phone" required class="w-full p-3 rounded-md bg-gray-700 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-accent-turquoise">
+                <div class="flex justify-between items-center text-2xl font-bold pt-4 border-t border-gray-700">
+                    <span>Total:</span>
+                    <span id="cart-total">₹0</span>
                 </div>
-                <div>
-                    <label for="address" class="block text-sm font-medium mb-1">Delivery Address</label>
-                    <textarea id="address" name="address" rows="3" required class="w-full p-3 rounded-md bg-gray-700 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-accent-turquoise"></textarea>
-                </div>
-                <div>
-                    <label for="specialInstructions" class="block text-sm font-medium mb-1">Special Instructions (Optional)</label>
-                    <textarea id="specialInstructions" name="specialInstructions" rows="2" class="w-full p-3 rounded-md bg-gray-700 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-accent-turquoise"></textarea>
-                </div>
-                <div>
-                    <label for="paymentMethod" class="block text-sm font-medium mb-1">Payment Method</label>
-                    <select id="paymentMethod" name="paymentMethod" class="w-full p-3 rounded-md bg-gray-700 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-accent-turquoise">
-                        <option value="Cash on Delivery">Cash on Delivery</option>
-                        <option value="Online">Online Payment (coming soon)</option>
-                    </select>
-                </div>
-                <button type="submit" class="w-full bg-gradient-to-r from-pink-400 to-red-500 text-white font-bold py-3 rounded-full shadow-lg transition-transform duration-300 hover:scale-105 glow-on-hover">
-                    Place Order
+                <button onclick="showCheckoutForm()" class="w-full mt-8 bg-gradient-to-r from-pink-400 to-red-500 text-white font-bold py-3 rounded-full shadow-lg transition-transform duration-300 hover:scale-105 glow-on-hover">
+                    Proceed to Checkout
                 </button>
-            </form>
+            </div>
+
+            <!-- Checkout Form View -->
+            <div id="checkout-form-view" class="hidden">
+                 <button onclick="showCartView()" class="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors duration-200">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+                <form id="order-form" onsubmit="submitOrder(event)" class="space-y-4">
+                    <div>
+                        <label for="name" class="block text-sm font-medium mb-1">Name</label>
+                        <input type="text" id="name" name="name" required class="w-full p-3 rounded-md bg-gray-700 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-accent-turquoise">
+                    </div>
+                    <div>
+                        <label for="phone" class="block text-sm font-medium mb-1">Phone Number</label>
+                        <input type="tel" id="phone" name="phone" required class="w-full p-3 rounded-md bg-gray-700 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-accent-turquoise">
+                    </div>
+                    <div>
+                        <label for="address" class="block text-sm font-medium mb-1">Delivery Address</label>
+                        <textarea id="address" name="address" rows="3" required class="w-full p-3 rounded-md bg-gray-700 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-accent-turquoise"></textarea>
+                    </div>
+                    <div>
+                        <label for="specialInstructions" class="block text-sm font-medium mb-1">Special Instructions (Optional)</label>
+                        <textarea id="specialInstructions" name="specialInstructions" rows="2" class="w-full p-3 rounded-md bg-gray-700 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-accent-turquoise"></textarea>
+                    </div>
+                    <div>
+                        <label for="paymentMethod" class="block text-sm font-medium mb-1">Payment Method</label>
+                        <select id="paymentMethod" name="paymentMethod" class="w-full p-3 rounded-md bg-gray-700 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-accent-turquoise">
+                            <option value="Cash on Delivery">Cash on Delivery</option>
+                            <option value="Online">Online Payment (coming soon)</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="w-full mt-8 bg-gradient-to-r from-pink-400 to-red-500 text-white font-bold py-3 rounded-full shadow-lg transition-transform duration-300 hover:scale-105 glow-on-hover">
+                        Place Order
+                    </button>
+                </form>
+            </div>
         </div>
     </div>
 
