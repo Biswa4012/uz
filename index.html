@@ -157,12 +157,22 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, addDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js"; // NEW: For Cloud Storage
         import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
         setLogLevel('debug');
 
-        // IMPORTANT: Replace the placeholder below with your actual Firebase config object.
-        // You can get this from your Firebase project settings in the console.
+        // IMPORTANT FOR VERCEl DEPLOYMENT:
+        // For production, DO NOT hardcode your API keys here.
+        // Instead, use Vercel Environment Variables to securely provide these values.
+        // For example, in your Vercel project settings, set:
+        // NEXT_PUBLIC_FIREBASE_API_KEY=AIzaSyBMUdnyzIOkviD2a2qR1LUy1uQxS_TaPZg
+        // NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
+        // ...and so on for each key.
+        // Then, you would access them like:
+        // apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+        // For a simple static HTML file, you might need to manually replace these during a build step
+        // or accept the public exposure for a truly static site.
         const firebaseConfig = {
             apiKey: "AIzaSyBMUdnyzIOkviD2a2qR1LUy1uQxS_TaPZg",
             authDomain: "urbzai.firebaseapp.com",
@@ -175,6 +185,7 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const auth = getAuth(app);
+        const storage = getStorage(app); // NEW: Initialize Storage
         
         let userId = null;
         let isAuthReady = false;
@@ -274,6 +285,8 @@
         window.showCheckoutForm = () => {
             document.getElementById('cart-view').classList.add('hidden');
             document.getElementById('checkout-form-view').classList.remove('hidden');
+            // NEW: Call to set initial state of online payment options
+            toggleOnlinePaymentOptions(); 
         };
 
         window.showCartView = () => {
@@ -282,6 +295,23 @@
             updateCartUI();
         };
 
+        // NEW: Function to toggle visibility and requirement of online payment options
+        window.toggleOnlinePaymentOptions = () => {
+            const paymentMethod = document.getElementById('paymentMethod').value;
+            const onlineOptionsDiv = document.getElementById('online-payment-options');
+            const screenshotInput = document.getElementById('screenshotUpload');
+
+            if (paymentMethod === 'Online') {
+                onlineOptionsDiv.classList.remove('hidden');
+                screenshotInput.required = true;
+            } else {
+                onlineOptionsDiv.add('hidden');
+                screenshotInput.required = false;
+                screenshotInput.value = ''; // Clear selected file
+            }
+        };
+
+        // SUBMIT ORDER FUNCTION - MAJOR CHANGES HERE
         window.submitOrder = async (event) => {
             event.preventDefault();
             const form = event.target;
@@ -290,6 +320,9 @@
             const address = form.address.value;
             const specialInstructions = form.specialInstructions.value;
             const paymentMethod = form.paymentMethod.value;
+            // NEW: Get the selected screenshot file
+            const screenshotFile = form.screenshotUpload ? form.screenshotUpload.files[0] : null; 
+
             const orderItems = Object.values(cart).map(item => ({
                 name: item.name,
                 price: item.price,
@@ -298,7 +331,6 @@
             const total = Object.values(cart).reduce((sum, item) => sum + (item.price * item.quantity), 0);
             
             if (Object.keys(cart).length === 0) {
-                // Use a modal-like message box instead of alert
                 document.getElementById('message-box-text').textContent = 'Your cart is empty!';
                 openModal('message-box-modal');
                 return;
@@ -310,13 +342,32 @@
                 return;
             }
 
-            const ordersCollectionRef = collection(db, `artifacts/${firebaseConfig.projectId}/public/data/orders`);
+            // NEW: Client-side validation for screenshot if payment method is 'Online'
+            if (paymentMethod === 'Online' && !screenshotFile) {
+                document.getElementById('message-box-text').textContent = 'Please upload a payment screenshot for online payment.';
+                openModal('message-box-modal');
+                return;
+            }
+
+            // Define the Firestore collection path
+            // CHANGED: Simplified to 'orders' collection. This is what the Firebase Extension watches!
+            const ordersCollectionRef = collection(db, 'orders'); 
             
             try {
+                let screenshotUrl = null;
+                // NEW: Upload screenshot if online payment and file is present
+                if (paymentMethod === 'Online' && screenshotFile) {
+                    const storageRef = ref(storage, `payment_screenshots/${Date.now()}_${screenshotFile.name}`); // Unique filename
+                    const snapshot = await uploadBytes(storageRef, screenshotFile);
+                    screenshotUrl = await getDownloadURL(snapshot.ref);
+                    console.log('Screenshot uploaded, URL:', screenshotUrl);
+                }
+
                 const docRef = await addDoc(ordersCollectionRef, {
                     customer: { name, phone, address, specialInstructions, paymentMethod },
-                    orderItems: JSON.parse(JSON.stringify(orderItems)), // Deep copy to prevent issues
+                    orderItems: orderItems, // Removed unnecessary JSON.parse(JSON.stringify())
                     total,
+                    screenshotUrl: screenshotUrl, // NEW: Add screenshot URL to order data
                     status: 'Pending',
                     timestamp: new Date()
                 });
@@ -325,15 +376,17 @@
                 localStorage.removeItem('cart');
                 Object.keys(cart).forEach(key => delete cart[key]); // Clear in-memory cart
                 updateCartUI();
+                form.reset(); // Reset form fields after successful submission
                 document.getElementById('message-box-text').textContent = 'Order submitted successfully! Your order number is ' + docRef.id;
                 openModal('message-box-modal');
             } catch (e) {
                 console.error("Error adding document: ", e);
-                document.getElementById('message-box-text').textContent = 'Failed to submit order. Please try again.';
+                document.getElementById('message-box-text').textContent = 'Failed to submit order. Please try again. Error: ' + e.message;
                 openModal('message-box-modal');
             }
         };
 
+        // Load cart from storage
         window.loadCartFromStorage = () => {
             const storedCart = localStorage.getItem('cart');
             if (storedCart) {
@@ -348,6 +401,7 @@
         
         document.addEventListener('DOMContentLoaded', () => {
             loadCartFromStorage();
+            toggleOnlinePaymentOptions(); // NEW: Call on load to set initial state of online payment options
         });
 
     </script>
@@ -572,11 +626,24 @@
                     </div>
                     <div>
                         <label for="paymentMethod" class="block text-sm font-medium mb-1">Payment Method</label>
-                        <select id="paymentMethod" name="paymentMethod" class="w-full p-3 rounded-md bg-gray-700 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-accent-turquoise">
+                        <!-- CHANGED: Added onchange event -->
+                        <select id="paymentMethod" name="paymentMethod" onchange="toggleOnlinePaymentOptions()" class="w-full p-3 rounded-md bg-gray-700 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-accent-turquoise">
                             <option value="Cash on Delivery">Cash on Delivery</option>
-                            <option value="Online">Online Payment (coming soon)</option>
+                            <option value="Online">Online Payment</option>
                         </select>
                     </div>
+                    <!-- NEW SECTION: Online Payment Options (conditionally shown) -->
+                    <div id="online-payment-options" class="hidden space-y-4 border border-gray-600 p-4 rounded-md">
+                        <p class="text-sm font-medium text-center">Scan the QR code below to make payment, then upload the screenshot.</p>
+                        <!-- Replace with your actual QR code image URL -->
+                        <img src="https://placehold.co/200x200/FFFFFF/000000?text=YOUR_QR_CODE" alt="Payment QR Code" class="w-48 h-48 mx-auto rounded-md border border-gray-500 p-2">
+                        <div>
+                            <label for="screenshotUpload" class="block text-sm font-medium mb-1">Upload Payment Screenshot</label>
+                            <!-- CHANGED: Added required attribute in JS and accept for images -->
+                            <input type="file" id="screenshotUpload" name="screenshotUpload" accept="image/*" class="w-full p-3 rounded-md bg-gray-700 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-accent-turquoise">
+                        </div>
+                    </div>
+                    <!-- END NEW SECTION -->
                     <button type="submit" class="w-full mt-8 bg-gradient-to-r from-pink-400 to-red-500 text-white font-bold py-3 rounded-full shadow-lg transition-transform duration-300 hover:scale-105 glow-on-hover">
                         Place Order
                     </button>
